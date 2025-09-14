@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: devforces_postgres
+    environment:
+      POSTGRES_DB: devforces
+      POSTGRES_USER: devforces_user
+      POSTGRES_PASSWORD: devforces_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  backend:
+    build: ./backend
+    container_name: devforces_backend
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://devforces_user:devforces_pass@postgres:5432/devforces
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      NODE_ENV: development
+    depends_on:
+      - postgres
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build: ./frontend
+    container_name: devforces_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      REACT_APP_API_URL: http://localhost:3001
+
+  judge:
+    build: ./docker/judge
+    container_name: devforces_judge
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/submissions:/submissions
+    environment:
+      BACKEND_URL: http://backend:3001
+
+volumes:
+  postgres_data:
